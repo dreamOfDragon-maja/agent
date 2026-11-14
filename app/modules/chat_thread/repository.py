@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from .models import ChatThread
+from uuid import UUID
 
 
 class ChatThreadRepository:
@@ -21,3 +22,15 @@ class ChatThreadRepository:
             )
         )
         return list(result.all())
+
+    async def find_owned(
+            self,
+            thread_id: UUID,
+            user_id: int,
+    ) -> ChatThread | None:
+        return await self.session.scalar(
+            select(ChatThread).where(
+                ChatThread.id == thread_id,
+                ChatThread.user_id == user_id,
+            )
+        )

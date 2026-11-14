@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from uuid import UUID
+from app.modules.chat_thread.exceptions import ChatThreadNotFoundError
 from .repository import ChatThreadRepository
 from .models import ChatThread
 
@@ -21,3 +22,27 @@ class ChatThreadService:
 
     async def list_by_user(self, user_id: int) -> list[ChatThread]:
         return await self.repository.list_by_user(user_id)
+
+    async def rename(
+            self,
+            thread_id: UUID,
+            user_id: int,
+            title: str
+    ) -> ChatThread:
+        async with self.session.begin():
+            # 1.根据thread_id和user_id查询，判断是否匹配
+            thread = await self.repository.find_owned(thread_id, user_id)
+            if thread is None:
+                # 为None，说明不存在，或者不属于当前用户，抛出异常
+                # raise: 就是指扔出去一个异常，代码会立刻终止，结束运行，把异常扔给调用者
+                raise ChatThreadNotFoundError
+
+            # 2.查询后直接修改字段，触发数据库更新
+            thread.title = title
+
+            # 3.刷新数据，重新从数据库中查出最新值
+            # 异步事务中要先调用 flush() 执行 SQL，再调用 refresh(thread) 重新加载时间字段
+            await self.session.flush()
+            await self.session.refresh(thread)
+
+        return thread

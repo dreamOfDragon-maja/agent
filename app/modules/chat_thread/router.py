@@ -32,3 +32,14 @@ async def list_chat_threads(
     """查询当前用户的会话列表"""
 
     return await service.list_by_user(user_id)
+
+@router.patch("/{thread_id}", response_model=ChatThreadResponse)
+async def rename(
+    thread_id: str,
+    request: ChatThreadCreate,
+    user_id: Annotated[int, Header(alias="x-user-id")],
+    service: ChatThreadService = Depends(get_service),
+):
+    """重命名会话"""
+
+    return await service.rename(thread_id, user_id, request.title)
