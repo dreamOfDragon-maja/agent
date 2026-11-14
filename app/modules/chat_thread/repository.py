@@ -34,3 +34,6 @@ class ChatThreadRepository:
                 ChatThread.user_id == user_id,
             )
         )
+
+    async def delete(self, thread: ChatThread) -> None:
+        await self.session.delete(thread)

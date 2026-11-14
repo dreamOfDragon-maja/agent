@@ -46,3 +46,15 @@ class ChatThreadService:
             await self.session.refresh(thread)
 
         return thread
+
+    async def delete(
+            self,
+            thread_id: UUID,
+            user_id: int,
+    ) -> None:
+        async with self.session.begin():
+            thread = await self.repository.find_owned(thread_id, user_id)
+            if thread is None:
+                raise ChatThreadNotFoundError
+
+            await self.repository.delete(thread)
