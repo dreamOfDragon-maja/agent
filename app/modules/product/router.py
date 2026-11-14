@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends,Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.infra.database import get_session
 from app.modules.product.service import ProductService
 from app.modules.product.schemas import ProductResponse
+from decimal import Decimal
 
 router = APIRouter(prefix="/api/v1/products", tags=["产品管理相关接口"])
 
@@ -17,4 +18,17 @@ async def list_products(
         service : ProductService = Depends(get_product_service)
         ) -> list[ProductResponse]:
     return await service.list_products(category)
+
+@router.get("/candidates", response_model=list[ProductResponse])
+async def list_candidates(
+    categories: list[str] = Query(min_length=1),
+    premium_min: Decimal | None = None,
+    limit_per_category: int = 5,
+    service: ProductService = Depends(get_product_service),
+) -> list[ProductResponse]:
+    return await service.list_candidates(
+        categories=categories,
+        premium_min=premium_min,
+        limit_per_category=limit_per_category,
+    )
 

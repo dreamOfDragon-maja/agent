@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from decimal import Decimal
 from app.modules.product.repository import ProductRepository
 from app.modules.product.models import Product
 
@@ -14,3 +14,21 @@ class ProductService:
         category: str | None = None,
     ) -> list[Product]:
         return await self.repository.query_by_category(category)
+
+    async def list_candidates(
+            self,
+            categories: list[str],
+            premium_min: Decimal | None,
+            limit_per_category: int,
+    ) -> list[Product]:
+        candidate_products: list[Product] = []
+        # 利用 dict.fromkeys() 对险种去重
+        for category in dict.fromkeys(categories):
+            products = await self.repository.find_limited_by_category(
+                category=category,
+                premium_min=premium_min,
+                limit=limit_per_category,
+            )
+            candidate_products.extend(products)
+
+        return candidate_products
