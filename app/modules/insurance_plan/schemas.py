@@ -1,6 +1,6 @@
 from decimal import Decimal
 from typing import Any
-
+from dataclasses import dataclass
 from pydantic import BaseModel, Field
 
 
@@ -22,3 +22,9 @@ class InsurancePlanCreate(BaseModel):
     summary: str | None = None
     insured_profile: dict[str, Any] = Field(default_factory=dict)
     items: list[InsurancePlanItemCreate] = Field(min_length=1)
+
+@dataclass(frozen=True)
+class InsuranceAgentContext:
+    """保险顾问Agent运行时上下文"""
+
+    user_id: int

@@ -6,7 +6,7 @@ from fastapi.sse import ServerSentEvent
 from app.modules.chat.schemas import ChatRequest
 from app.modules.chat_thread.exceptions import ChatThreadNotFoundError
 from app.modules.chat_thread.repository import ChatThreadRepository
-
+from app.modules.insurance_plan.schemas import InsuranceAgentContext
 
 class ChatService:
     def __init__(self, session: AsyncSession, agent: CompiledStateGraph):
@@ -31,12 +31,14 @@ class ChatService:
         _input = {"messages": [HumanMessage(content=request.message)]}
         # 2.2.会话ID
         config = {"configurable": {"thread_id": str(request.thread_id)}}
-        # 2.3.调用
-        stream = await self.agent.astream_events(_input, config,version="v3")
+        # 2.3.上下文context
+        context = InsuranceAgentContext(user_id=user_id)
+        # 2.4.调用
+        stream = await self.agent.astream_events(_input, config,context=context,version="v3")
 
-        # 2.4.只读取消息中的文本增量
+        # 2.5.只读取消息中的文本增量
         async for message in stream.messages:
             async for text in message.text:
                 yield ServerSentEvent(data=text, event="message")
-        # 2.5.返回结束标识
+        # 2.6.返回结束标识
         yield ServerSentEvent(data="[DONE]", event="done")
