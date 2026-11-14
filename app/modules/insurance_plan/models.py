@@ -7,6 +7,8 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.common.models import Base, CreateAtMixin, UpdateAtMixin
+# 注册 users 表到 Base.metadata，否则 users.id 外键无法解析
+from app.modules.user.models import User  # noqa: F401
 
 
 class InsurancePlan(Base, CreateAtMixin, UpdateAtMixin):
