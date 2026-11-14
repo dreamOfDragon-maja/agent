@@ -29,10 +29,16 @@ app = FastAPI(
     lifespan = lifespan
 )
 
+#商品
 from app.modules.product.router import router as product_router
 
 # 创建 app 后注册路由
 app.include_router(product_router)
+
+#会话管理
+from app.modules.chat_thread.router import router as chat_thread_router
+
+app.include_router(chat_thread_router)
 
 #healthy接口
 @app.get("/healthy",summary="健康检测的接口")
