@@ -1,6 +1,7 @@
 from langchain_core.messages import HumanMessage
 from langgraph.graph.state import CompiledStateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.sse import ServerSentEvent
 
 from app.modules.chat.schemas import ChatRequest
 from app.modules.chat_thread.exceptions import ChatThreadNotFoundError
@@ -31,8 +32,11 @@ class ChatService:
         # 2.2.会话ID
         config = {"configurable": {"thread_id": str(request.thread_id)}}
         # 2.3.调用
-        result = await self.agent.ainvoke(_input, config)
+        stream = await self.agent.astream_events(_input, config,version="v3")
 
-        # 3.取出最后一条AI消息
-        ai_message = result["messages"][-1]
-        return ai_message.content
+        # 2.4.只读取消息中的文本增量
+        async for message in stream.messages:
+            async for text in message.text:
+                yield ServerSentEvent(data=text, event="message")
+        # 2.5.返回结束标识
+        yield ServerSentEvent(data="[DONE]", event="done")
