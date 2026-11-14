@@ -26,8 +26,8 @@ async def lifespan(app: FastAPI):
         await check_database()
         #初始化checkpointer
         checkpointer = await init_checkpointer()
-        #初始化agent
-        agent = await init_insurance_agent(checkpointer)
+        #初始化agent,保存在FastAPI的全局state中
+        app.state.agent = await init_insurance_agent(checkpointer)
         yield
     finally:
         await close_database()
@@ -42,14 +42,16 @@ app = FastAPI(
 
 #商品
 from app.modules.product.router import router as product_router
-
 # 创建 app 后注册路由
 app.include_router(product_router)
 
 #会话管理
 from app.modules.chat_thread.router import router as chat_thread_router
-
 app.include_router(chat_thread_router)
+
+#聊天
+from app.modules.chat.router import router as chat_router
+app.include_router(chat_router)
 
 @app.exception_handler(ApplicationError)
 async def handle_application_error(
