@@ -18,3 +18,6 @@ class ChatThreadService:
             await self.repository.add(chat_thread)
 
             return chat_thread
+
+    async def list_by_user(self, user_id: int) -> list[ChatThread]:
+        return await self.repository.list_by_user(user_id)
