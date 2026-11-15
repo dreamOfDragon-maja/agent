@@ -21,6 +21,7 @@ async def lifespan(app: FastAPI):
     from app.infra.database import check_database,close_database
     from app.infra.checkpointer import init_checkpointer,close_checkpointer
     from app.agents.insurance_advisor import init_insurance_agent
+    from app.rag import close_rag  # 导入模块就会初始化
     try:
         #初始化数据库连接池
         await check_database()
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
         app.state.agent = await init_insurance_agent(checkpointer)
         yield
     finally:
+        close_rag()
         await close_database()
         await close_checkpointer()
 
