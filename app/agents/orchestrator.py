@@ -96,7 +96,7 @@ async def init_insurance_orchestrator(
 
     builder = StateGraph(InsuranceAgentState, )
     builder.add_node("route", route_node)
-    builder.add_node("chitchat", init_chitchat_agent)
+    builder.add_node("chitchat", init_chitchat_agent())
     builder.add_node("recommendation_plan", recommendation_node)
     builder.add_node("claim", claim_node)
     builder.add_node("human_handoff", human_handoff_node)
