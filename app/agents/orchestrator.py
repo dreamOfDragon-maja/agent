@@ -59,7 +59,7 @@ def fallback_node(state: InsuranceAgentState) -> dict:
 
 
 # 二、定义主Graph
-def init_insurance_orchestrator(
+async def init_insurance_orchestrator(
         checkpointer: AsyncPostgresSaver,
 ):
     """初始化保险顾问主Graph"""
