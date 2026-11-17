@@ -3,6 +3,7 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command
 from .intent_router import intent_router
+from app.agents.chitchat import init_chitchat_agent
 
 from app.agents.schemas import (
     InsuranceAgentState,
@@ -95,7 +96,7 @@ async def init_insurance_orchestrator(
 
     builder = StateGraph(InsuranceAgentState, )
     builder.add_node("route", route_node)
-    builder.add_node("chitchat", chitchat_node)
+    builder.add_node("chitchat", init_chitchat_agent)
     builder.add_node("recommendation_plan", recommendation_node)
     builder.add_node("claim", claim_node)
     builder.add_node("human_handoff", human_handoff_node)
