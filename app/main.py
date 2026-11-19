@@ -1,7 +1,14 @@
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+# 直接运行 `python app/main.py` 时，把项目根目录加入 sys.path，
+# 避免因工作目录不同而报 `ModuleNotFoundError: No module named 'app'`
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 import uvicorn
-from fastapi import FastAPI
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -75,7 +82,6 @@ async def healthy()->dict[str, str]:
     return {"status": "ok"}
 
 if __name__ == "__main__":
-    import sys
     uvicorn.run(
         "app.main:app",
         host=settings.app.host,

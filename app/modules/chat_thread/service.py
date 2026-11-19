@@ -83,7 +83,7 @@ class ChatThreadService:
         # 2.读取Agent最新状态
         config = {"configurable": {"thread_id": str(thread_id)}}
         snapshot = await self.agent.aget_state(config)
-        additional_infos = snapshot.values.get("additional_info", {})
+        additional_infos = snapshot.values.get("additional_info") or {}
 
         # 3.只保留用户消息和AI消息
         messages = []
@@ -103,17 +103,11 @@ class ChatThreadService:
                         additional_info=additional_infos.get(message.id),
                     )
                 )
-        # 处理interrupt
-        interrupts = None
-        if hasattr(snapshot, 'interrupts') and snapshot.interrupts:
-            interrupts = snapshot.interrupts
-        elif hasattr(snapshot, 'tasks') and snapshot.tasks:
-            for task in snapshot.tasks:
-                if hasattr(task, 'interrupts') and task.interrupts:
-                    interrupts = task.interrupts
-                    break
+        # 处理interrupt：刷新页面后仍能恢复待确认的操作
+        interrupt = snapshot.interrupts[0].value if snapshot.interrupts else None
 
         return ChatHistoryResponse(
             thread_id=thread_id,
             messages=messages,
+            interrupt=interrupt,
         )

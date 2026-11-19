@@ -13,7 +13,8 @@ def merge_additional_info(
     """按照AI消息id合并引用信息"""
     if not left:
         return right
-    return left.update(right)
+    left.update(right)
+    return left
 
 # 路由意图常量
 Intent = Literal[

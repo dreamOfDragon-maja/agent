@@ -33,13 +33,28 @@ class ChatService:
             raise ChatThreadNotFoundError
 
         # 2.调用Agent
-        # 2.1.消息输入
+        # 会话ID
+        config = {"configurable": {"thread_id": str(request.thread_id)}}
+
+        # 2.1.如果上一轮还有未确认的 interrupt，用户却发送了普通消息，
+        # 直接把消息追加到会话里会让模型拿到“有 tool_calls 却没有 tool 结果”的历史，
+        # DeepSeek 会返回 400，且该会话会永久损坏。这里直接拦下并重新下发确认操作。
+        if request.decision is None:
+            snapshot = await self.agent.aget_state(config)
+            if snapshot.interrupts:
+                for item in snapshot.interrupts:
+                    yield ServerSentEvent(data=item.value, event="interrupt")
+                yield ServerSentEvent(
+                    data="当前有待确认的操作，请先确认或取消后再继续对话。",
+                    event="error",
+                )
+                return
+
+        # 2.2.消息输入
         if request.decision:
             _input = Command(resume=request.decision)
         else:
             _input = {"messages": [HumanMessage(content=request.message)]}
-        # 会话ID
-        config = {"configurable": {"thread_id": str(request.thread_id)}}
         # 上下文context
         context = InsuranceAgentContext(user_id=user_id)
         # 2.2.调用

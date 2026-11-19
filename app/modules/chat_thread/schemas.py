@@ -36,3 +36,4 @@ class ChatHistoryResponse(BaseModel):
 
     thread_id: UUID
     messages: list[ChatMessageResponse]
+    interrupt: Any | None = None  # 待用户确认的操作（如保存方案、提交报案）

@@ -12,6 +12,17 @@ def configure_logging(level: str = "INFO") -> None:
 
     log_level = _log_level(level)
 
+    # Windows 控制台默认可能是 GBK 编码，日志里的 emoji（如 ✅）会抛 UnicodeEncodeError。
+    # 保留原编码，只把无法编码的字符替换掉，避免日志处理器不断打印异常堆栈。
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(errors="replace")
+        except (ValueError, OSError):
+            pass
+
     # 配置 Python 标准 logging
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
