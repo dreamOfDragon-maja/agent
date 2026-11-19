@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -7,4 +8,5 @@ class ChatRequest(BaseModel):
     """基础对话请求"""
 
     thread_id: UUID
-    message: str = Field(min_length=1)
+    message: str | None = Field(default=None, min_length=1)
+    decision: dict[str, Any] | None = None

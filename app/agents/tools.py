@@ -5,6 +5,8 @@ from langchain.tools import tool
 from fastapi.encoders import jsonable_encoder
 from langgraph.prebuilt import ToolRuntime
 from langgraph.config import get_stream_writer
+from langgraph.types import interrupt
+
 from app.infra.database import AsyncSessionFactory
 from app.modules.product.models import Product
 from app.modules.product.service import ProductService
@@ -43,10 +45,18 @@ async def save_insurance_plan(
     plan: InsurancePlanCreate,
     runtime: ToolRuntime[InsuranceAgentContext],
 ) -> dict[str, str]:
-    """
-    保存当前用户的保险推荐方案。
-    当你查询完候选产品后，根据用户画像、候选产品生成保险组合方案，保存到数据库
-    """
+    """请用户确认后，保存当前保险推荐方案。"""
+
+    decision = interrupt(  # 中断执行，把方案发给用户看看
+        {
+            "plan": plan.model_dump(mode="json"),
+            "confirm_info": "是否确认保存这份保险推荐方案？",
+            "action": ["approve", "reject"],
+        }
+    )
+    # 如果用户拒绝，则拒绝向下执行
+    if decision.get("action") != "approve":
+        return {"message": f"用户取消保存保险方案, 原因:{decision.get('reject_reason')}"}
 
     async with AsyncSessionFactory() as session:
         service = InsurancePlanService(session)

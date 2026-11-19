@@ -103,6 +103,15 @@ class ChatThreadService:
                         additional_info=additional_infos.get(message.id),
                     )
                 )
+        # 处理interrupt
+        interrupts = None
+        if hasattr(snapshot, 'interrupts') and snapshot.interrupts:
+            interrupts = snapshot.interrupts
+        elif hasattr(snapshot, 'tasks') and snapshot.tasks:
+            for task in snapshot.tasks:
+                if hasattr(task, 'interrupts') and task.interrupts:
+                    interrupts = task.interrupts
+                    break
 
         return ChatHistoryResponse(
             thread_id=thread_id,

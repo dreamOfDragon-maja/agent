@@ -1,6 +1,7 @@
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.stream import CustomTransformer
+from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.sse import ServerSentEvent
 from aiostream import stream as astream
@@ -33,7 +34,10 @@ class ChatService:
 
         # 2.调用Agent
         # 2.1.消息输入
-        _input = {"messages": [HumanMessage(content=request.message)]}
+        if request.decision:
+            _input = Command(resume=request.decision)
+        else:
+            _input = {"messages": [HumanMessage(content=request.message)]}
         # 会话ID
         config = {"configurable": {"thread_id": str(request.thread_id)}}
         # 上下文context
@@ -70,6 +74,10 @@ class ChatService:
                 if isinstance(data, dict) and data.get("type") == "additional_info":
                     additional_info = data.get("data", {})
                     yield ServerSentEvent(data=additional_info, event="additional_info")
+
+        interrupts = await stream.interrupts()
+        for item in interrupts:
+            yield ServerSentEvent(data=item.value, event="interrupt")
 
         if final_message_id and additional_info:
             # 将additional_info更新到state中
