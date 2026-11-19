@@ -4,6 +4,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command
 from .intent_router import intent_router
 from app.agents.chitchat import init_chitchat_agent
+from app.agents.insurance_advisor import init_insurance_advisor
 
 from app.agents.schemas import (
     InsuranceAgentState,
@@ -94,10 +95,10 @@ async def init_insurance_orchestrator(
 ):
     """初始化保险顾问主Graph"""
 
-    builder = StateGraph(InsuranceAgentState, )
+    builder = StateGraph(InsuranceAgentState)
     builder.add_node("route", route_node)
     builder.add_node("chitchat", init_chitchat_agent())
-    builder.add_node("recommendation_plan", recommendation_node)
+    builder.add_node("recommendation_plan", await init_insurance_advisor())
     builder.add_node("claim", claim_node)
     builder.add_node("human_handoff", human_handoff_node)
     builder.add_node("fallback", fallback_node)

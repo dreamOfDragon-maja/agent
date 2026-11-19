@@ -83,6 +83,7 @@ class ChatThreadService:
         # 2.读取Agent最新状态
         config = {"configurable": {"thread_id": str(thread_id)}}
         snapshot = await self.agent.aget_state(config)
+        additional_infos = snapshot.values.get("additional_info", {})
 
         # 3.只保留用户消息和AI消息
         messages = []
@@ -99,6 +100,7 @@ class ChatThreadService:
                     ChatMessageResponse(
                         role=role,
                         content=message.text,
+                        additional_info=additional_infos.get(message.id),
                     )
                 )
 

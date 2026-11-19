@@ -32,7 +32,7 @@ SYSTEM_PROMPT = """
 - 回答要简短、精确，不要长篇大论。
 """
 
-async def init_insurance_agent(checkpointer: AsyncPostgresSaver):
+async def init_insurance_advisor():
     """初始化保险顾问Agent"""
 
     # 1.初始化模型
@@ -48,7 +48,7 @@ async def init_insurance_agent(checkpointer: AsyncPostgresSaver):
         model=model,
         tools=[query_candidate_products,save_insurance_plan,query_product_clause],
         system_prompt=SYSTEM_PROMPT,
-        checkpointer=checkpointer,
+        checkpointer=True,
         context_schema=InsuranceAgentContext,  # Context约束
         middleware=[ToolErrorMiddleware(on_error=handle_tool_error)],
     )
