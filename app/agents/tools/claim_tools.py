@@ -8,6 +8,7 @@ from app.infra.database import AsyncSessionFactory
 from app.modules.claim.schemas import ClaimCaseCreate
 from app.modules.claim.service import ClaimService
 from app.modules.insurance_plan.schemas import InsuranceAgentContext
+from app.modules.insurance_plan.service import InsurancePlanService
 
 @tool
 async def create_claim_report(
@@ -77,3 +78,15 @@ async def query_claim_progress(
             for case in cases
         ]
         return json.dumps(result, ensure_ascii=False, default=str)
+
+@tool
+async def query_user_policies(
+        runtime: ToolRuntime[InsuranceAgentContext],
+) -> str:
+    """查询当前用户名下已投保的所有产品，包括产品ID、名称、险种、保费等。理赔前必须先调用此工具，确认用户有哪些有效保单。"""
+    async with AsyncSessionFactory() as session:
+        service = InsurancePlanService(session)
+        policies = await service.list_insured_by_user(runtime.context.user_id)
+        if not policies:
+            return "当前用户暂无已投保的保单。"
+        return json.dumps(policies, ensure_ascii=False)
