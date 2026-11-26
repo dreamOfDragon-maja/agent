@@ -1,6 +1,7 @@
 from langchain_milvus import Milvus
 from pymilvus import Function, FunctionType
 
+from app.core.config import settings
 from app.infra.database import AsyncSessionFactory
 from app.rag.models import ParentChunk
 from app.rag.repository import ParentChunkRepository
@@ -37,7 +38,8 @@ class ParentChunkRetriever:
             k=k,            #返回最高得分的k条
             fetch_k=10,     #初筛放回k值
             expr=f"product_id == {product_id}",
-            reranker=create_reranker(query), #重排器
+            # 没有 DashScope 凭据时可设置 RAG_RERANK_ENABLED=false 跳过重排
+            reranker=create_reranker(query) if settings.rag.rerank_enabled else None,
         )
 
         # 2.提取parent_id，并按照召回顺序去重

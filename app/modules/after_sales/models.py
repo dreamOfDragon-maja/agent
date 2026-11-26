@@ -1,21 +1,20 @@
-from datetime import datetime
-from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import BigInteger, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.common.models import Base, CreateAtMixin, UpdateAtMixin
-
-# 注册 users、products 表到 Base.metadata，否则外键无法解析
+# 注册 users、products、shop_orders 表到 Base.metadata，否则外键无法解析
 from app.modules.user.models import User  # noqa: F401
 from app.modules.product.models import Product  # noqa: F401
+from app.modules.order.models import ShopOrder  # noqa: F401
 
-class ClaimCase(Base, CreateAtMixin, UpdateAtMixin):
-    """理赔案件"""
 
-    __tablename__ = "claim_cases"
+class AfterSalesTicket(Base, CreateAtMixin, UpdateAtMixin):
+    """售后工单"""
+
+    __tablename__ = "after_sales_tickets"
 
     id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -26,34 +25,38 @@ class ClaimCase(Base, CreateAtMixin, UpdateAtMixin):
         BigInteger,
         ForeignKey("users.id"),
     )
+    order_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("shop_orders.id"),
+    )
     product_id: Mapped[int] = mapped_column(
         BigInteger,
         ForeignKey("products.id"),
     )
-    policy_no: Mapped[str | None] = mapped_column(String(100))
-    incident_type: Mapped[str] = mapped_column(String(30))
-    incident_description: Mapped[str] = mapped_column(Text)
-    incident_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    claim_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    ticket_number: Mapped[str] = mapped_column(String(40), unique=True)
+    issue_type: Mapped[str] = mapped_column(String(30))
+    issue_description: Mapped[str] = mapped_column(Text)
+    desired_resolution: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(
         String(30),
         default="submitted",
         server_default="submitted",
     )
 
-class ClaimProgress(Base, CreateAtMixin):
-    """理赔进度"""
 
-    __tablename__ = "claim_progress"
+class AfterSalesProgress(Base, CreateAtMixin):
+    """售后工单进度"""
+
+    __tablename__ = "after_sales_progress"
 
     id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         primary_key=True,
         default=uuid4,
     )
-    case_id: Mapped[UUID] = mapped_column(
+    ticket_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("claim_cases.id", ondelete="CASCADE"),
+        ForeignKey("after_sales_tickets.id", ondelete="CASCADE"),
     )
     node: Mapped[str] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(

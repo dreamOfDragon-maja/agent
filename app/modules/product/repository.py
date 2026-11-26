@@ -1,4 +1,6 @@
-from sqlalchemy import select
+import re
+
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from .models import Product
 from decimal import Decimal
@@ -30,23 +32,64 @@ class ProductRepository:
     async def find_limited_by_category(
             self,
             category: str,
-            premium_min: Decimal | None,
+            max_price: Decimal | None,
             limit: int,
     ) -> list[Product]:
         conditions = [
             Product.status == "active",
             Product.category == category,
         ]
-        if premium_min is not None:
-            conditions.append(Product.min_premium < premium_min)
+        if max_price is not None:
+            conditions.append(Product.min_price <= max_price)
 
         products = await self.session.scalars(
             select(Product)
             .where(*conditions)
             .order_by(
-                Product.min_premium.asc().nullslast(),
+                Product.min_price.asc().nullslast(),
                 Product.id.asc(),
             )
             .limit(limit)
         )
         return products.all()
+
+    async def find_by_ids(self, product_ids: list[int]) -> list[Product]:
+        if not product_ids:
+            return []
+        products = await self.session.scalars(
+            select(Product).where(Product.id.in_(product_ids))
+        )
+        return list(products.all())
+
+    async def search_by_name(self, keyword: str, limit: int = 5) -> list[Product]:
+        """按商品名称关键词搜索。
+
+        以空格/标点拆词，每个词都必须在商品名称中出现（忽略名称中的空格），
+        这样“星驰 X1 耳机”也能命中“星驰 X1 无线降噪耳机”。
+        """
+
+        tokens = [
+            token
+            for token in re.split(r"[\s,，。;；/]+", keyword.strip())
+            if token
+        ]
+        if not tokens:
+            return []
+
+        conditions = [Product.status == "active"]
+        for token in tokens:
+            compact = token.replace(" ", "")
+            conditions.append(
+                or_(
+                    Product.name.ilike(f"%{token}%"),
+                    func.replace(Product.name, " ", "").ilike(f"%{compact}%"),
+                )
+            )
+
+        products = await self.session.scalars(
+            select(Product)
+            .where(*conditions)
+            .order_by(Product.id.asc())
+            .limit(limit)
+        )
+        return list(products.all())

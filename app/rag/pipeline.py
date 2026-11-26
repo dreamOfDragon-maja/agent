@@ -20,11 +20,11 @@ logger = get_logger(__name__)
 
 
 MARKDOWN_OPTIMIZATION_PROMPT = """
-下面这份 Markdown 文档是从保险条款 PDF 解析得来，由于 PDF 中的各个小节是以表格形式存在，所以解析时出现错乱。你分析内容，帮我转为格式正确的 Markdown，特别是标题编号要正确。
+下面这份 Markdown 文档是从商品说明书/保修条款 PDF 解析得来，由于 PDF 中的各个小节是以表格形式存在，所以解析时出现错乱。你分析内容，帮我转为格式正确的 Markdown，特别是标题编号要正确。
 - 标题等级要从 1 级标题开始，逐层增加，目录和文档名不计入标题等级。
 - 输出结果中不要包含正文开始之前的部分。
 - 输出结果只包含 Markdown 正文，不要解释或代码围栏。
-- 不要修改保险条款。
+- 不要修改商品说明、保修和退换货政策。
 """.strip()
 
 
@@ -33,8 +33,8 @@ class RAGPipeline:
     def __init__(self, vector_store: Milvus) -> None:
         self._vector_store = vector_store
 
-        # 1.初始化文档解析工具
-        self._mineru = MinerU(settings.rag.mineru_token)
+        # 1.文档解析工具按需初始化：Markdown/TXT 直接读取，只有 PDF 才需要 MinerU
+        self._mineru: MinerU | None = None
 
         self._model = init_chat_model(
             settings.llm.chat_model,
@@ -62,8 +62,8 @@ class RAGPipeline:
         logger.info("RAG Pipeline 初始化完成✅️")
 
     async def ingest(self, product: Product) -> None:
-        # 1.解析并优化保险条款
-        markdown = self._parse_and_optimize(product.clause_name)
+        # 1.解析商品说明书/保修资料
+        markdown = self._parse_and_optimize(product.document_name)
 
         # 2.切分父块和子块
         parent_chunks, child_chunks = self._chunk(markdown, product)
@@ -74,12 +74,17 @@ class RAGPipeline:
         # 4.父块存入PostgreSQL
         await self._save_parent_chunks(product.id, parent_chunks)
 
-    def _parse_and_optimize(self, clause_name: str) -> str:
-        # 1.使用MinerU解析PDF
-        file_path = Path(APP_ROOT / "data" / "raw" / "kb" / clause_name)
-        result = self._mineru.extract(str(file_path))
+    def _parse_and_optimize(self, document_name: str) -> str:
+        file_path = Path(APP_ROOT / "data" / "raw" / "kb" / document_name)
+        if not file_path.exists():
+            raise FileNotFoundError(f"商品知识文档不存在: {file_path}")
 
-        # 2.使用大模型优化Markdown
+        # Markdown/TXT 直接读取，避免不必要的 PDF 解析和模型改写
+        if file_path.suffix.lower() in {".md", ".markdown", ".txt"}:
+            return file_path.read_text(encoding="utf-8")
+
+        # PDF 使用 MinerU 解析，再让模型修正 Markdown 结构
+        result = self._get_mineru().extract(str(file_path))
         response = self._model.invoke(
             [
                 {"role": "system", "content": MARKDOWN_OPTIMIZATION_PROMPT},
@@ -87,6 +92,15 @@ class RAGPipeline:
             ]
         )
         return response.content
+
+    def _get_mineru(self) -> MinerU:
+        if self._mineru is None:
+            if not settings.rag.mineru_token:
+                raise RuntimeError(
+                    "MINERU_TOKEN 未配置，无法解析 PDF；请改用 Markdown 文档或补全配置。"
+                )
+            self._mineru = MinerU(settings.rag.mineru_token)
+        return self._mineru
 
     def _chunk(
         self,
@@ -104,7 +118,7 @@ class RAGPipeline:
             parent = ParentChunk(
                 id=uuid4(),
                 product_id=product.id,
-                clause_name=product.clause_name,
+                document_name=product.document_name,
                 section_path=section_path,
                 content=section.page_content,
             )
@@ -152,6 +166,7 @@ class RAGPipeline:
                 repository.add_all(parent_chunks)
 
     def close(self):
-        """关闭mineru连接"""
+        """关闭 MinerU 连接（如果已初始化）。"""
 
-        self._mineru.close()
+        if self._mineru is not None:
+            self._mineru.close()

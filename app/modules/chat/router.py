@@ -1,9 +1,8 @@
-from typing import Annotated
-
 from fastapi.sse import EventSourceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi import APIRouter, Depends, Request, Header
+from fastapi import APIRouter, Depends, Request
+from app.core.security import CurrentUser
 from app.infra.database import get_session
 from .schemas import ChatRequest
 from .service import ChatService
@@ -22,9 +21,9 @@ def get_chat_service(
 @router.post("",response_class=EventSourceResponse)
 async def chat(
     request: ChatRequest,
-    user_id: Annotated[int, Header(alias="x-user-id")],
+    user: CurrentUser,
     service: ChatService=Depends(get_chat_service)
 ):
     # Generator, 用yield不断生成内容，形成动态列表
-    async for sse in service.chat_stream(user_id, request):
+    async for sse in service.chat_stream(user.id, request):
         yield sse

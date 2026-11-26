@@ -7,14 +7,15 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.common.models import Base, CreateAtMixin, UpdateAtMixin
-# 注册 users 表到 Base.metadata，否则 users.id 外键无法解析
+# 注册 users、products 表到 Base.metadata，否则外键无法解析
 from app.modules.user.models import User  # noqa: F401
+from app.modules.product.models import Product  # noqa: F401
 
 
-class InsurancePlan(Base, CreateAtMixin, UpdateAtMixin):
-    """用户保险方案"""
+class ShoppingPlan(Base, CreateAtMixin, UpdateAtMixin):
+    """用户购物方案"""
 
-    __tablename__ = "insurance_plans"
+    __tablename__ = "shopping_plans"
 
     id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -27,25 +28,25 @@ class InsurancePlan(Base, CreateAtMixin, UpdateAtMixin):
     )
     plan_name: Mapped[str] = mapped_column(String(120))
     summary: Mapped[str | None] = mapped_column(Text)
-    insured_profile: Mapped[dict[str, Any]] = mapped_column(
+    customer_profile: Mapped[dict[str, Any]] = mapped_column(
         JSONB,
         default=dict,
         server_default=text("'{}'::jsonb"),
     )
-    annual_premium_budget: Mapped[Decimal | None] = mapped_column(
+    total_budget: Mapped[Decimal | None] = mapped_column(
         Numeric(14, 2)
     )
     status: Mapped[str] = mapped_column(
         String(30),
-        default="uninsured",
-        server_default="uninsured",
+        default="active",
+        server_default="active",
     )
 
 
-class InsurancePlanItem(Base, CreateAtMixin, UpdateAtMixin):
-    """保险方案项"""
+class ShoppingPlanItem(Base, CreateAtMixin, UpdateAtMixin):
+    """购物方案中的商品项"""
 
-    __tablename__ = "insurance_plan_items"
+    __tablename__ = "shopping_plan_items"
 
     id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -54,7 +55,7 @@ class InsurancePlanItem(Base, CreateAtMixin, UpdateAtMixin):
     )
     plan_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("insurance_plans.id", ondelete="CASCADE"),
+        ForeignKey("shopping_plans.id", ondelete="CASCADE"),
     )
     product_id: Mapped[int] = mapped_column(
         BigInteger,
@@ -66,11 +67,11 @@ class InsurancePlanItem(Base, CreateAtMixin, UpdateAtMixin):
         server_default="1",
     )
     recommendation_reason: Mapped[str | None] = mapped_column(Text)
-    annual_premium_budget: Mapped[Decimal | None] = mapped_column(
+    unit_price: Mapped[Decimal | None] = mapped_column(
         Numeric(14, 2)
     )
     status: Mapped[str] = mapped_column(
         String(30),
-        default="uninsured",
-        server_default="uninsured",
+        default="pending",
+        server_default="pending",
     )

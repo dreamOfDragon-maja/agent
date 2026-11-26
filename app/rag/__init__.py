@@ -15,7 +15,7 @@ _embeddings = OllamaEmbeddings(
 # 2.初始化VectorStore
 _vector_store = Milvus(
     embedding_function=_embeddings,
-    collection_name="insurance_collection",
+    collection_name=settings.rag.collection_name,
     builtin_function=BM25BuiltInFunction(
         analyzer_params={"type": "chinese"}
     ),

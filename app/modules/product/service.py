@@ -18,15 +18,15 @@ class ProductService:
     async def list_candidates(
             self,
             categories: list[str],
-            premium_min: Decimal | None,
+            max_price: Decimal | None,
             limit_per_category: int,
     ) -> list[Product]:
         candidate_products: list[Product] = []
-        # 利用 dict.fromkeys() 对险种去重
+        # 利用 dict.fromkeys() 对分类去重
         for category in dict.fromkeys(categories):
             products = await self.repository.find_limited_by_category(
                 category=category,
-                premium_min=premium_min,
+                max_price=max_price,
                 limit=limit_per_category,
             )
             candidate_products.extend(products)

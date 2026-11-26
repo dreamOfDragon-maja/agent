@@ -1,18 +1,36 @@
+from datetime import datetime, timezone
+from typing import Any
+
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.stream import CustomTransformer
 from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.sse import ServerSentEvent
-from aiostream import stream as astream
 from app.modules.chat.schemas import ChatRequest
 from app.modules.chat_thread.exceptions import ChatThreadNotFoundError
 from app.modules.chat_thread.repository import ChatThreadRepository
-from app.modules.insurance_plan.schemas import InsuranceAgentContext
+from app.modules.shopping_plan.schemas import ShoppingAgentContext
 from app.agents.schemas import AdditionalInfo
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def merge_additional_info(target: dict[str, Any], payload: dict[str, Any]) -> None:
+    """合并同一轮对话中多个工具产生的卡片数据。
+
+    列表追加、字典合并、其他类型覆盖，避免后一个工具把前一个工具的商品卡/订单卡冲掉。
+    """
+
+    for key, value in payload.items():
+        current = target.get(key)
+        if isinstance(current, list) and isinstance(value, list):
+            target[key] = [*current, *value]
+        elif isinstance(current, dict) and isinstance(value, dict):
+            current.update(value)
+        else:
+            target[key] = value
 
 class ChatService:
     def __init__(self, session: AsyncSession, agent: CompiledStateGraph):
@@ -31,6 +49,9 @@ class ChatService:
         )
         if thread is None:
             raise ChatThreadNotFoundError
+
+        # 结束校验事务，避免长时间流式响应占用数据库连接
+        await self.repository.session.commit()
 
         # 2.调用Agent
         # 会话ID
@@ -56,7 +77,7 @@ class ChatService:
         else:
             _input = {"messages": [HumanMessage(content=request.message)]}
         # 上下文context
-        context = InsuranceAgentContext(user_id=user_id)
+        context = ShoppingAgentContext(user_id=user_id)
         # 2.2.调用
         stream = await (self.agent.astream_events
                         (_input,
@@ -87,8 +108,13 @@ class ChatService:
             if method == 'custom':
                 data = event["params"]["data"]
                 if isinstance(data, dict) and data.get("type") == "additional_info":
-                    additional_info = data.get("data", {})
-                    yield ServerSentEvent(data=additional_info, event="additional_info")
+                    payload = data.get("data", {})
+                    # 同一轮可能先后产生商品、订单、引用等多种卡片，合并后一并持久化
+                    if isinstance(payload, dict):
+                        merge_additional_info(additional_info, payload)
+                    else:
+                        additional_info.setdefault("items", []).append(payload)
+                    yield ServerSentEvent(data=payload, event="additional_info")
 
         interrupts = await stream.interrupts()
         for item in interrupts:
@@ -134,5 +160,9 @@ class ChatService:
         #         elif data.get('delta') and data['delta'].get('text'):
         #             yield ServerSentEvent(data=data['delta'].get('text'), event="message")
 
-        # 2.7.返回结束标识
+        # 2.7.更新会话活跃时间，保证会话列表按最近使用排序
+        thread.updated_at = datetime.now(timezone.utc)
+        await self.repository.session.commit()
+
+        # 2.8.返回结束标识
         yield ServerSentEvent(data="[DONE]", event="done")

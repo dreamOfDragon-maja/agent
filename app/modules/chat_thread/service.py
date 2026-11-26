@@ -20,14 +20,17 @@ class ChatThreadService:
         self.agent = agent
 
     async def add(self, user_id: int , title: str):
-        # 用上下文管理，开启事务，运行完成，自动commit，出现异常，自动rollback
-        async with self.session.begin():
-            # 创建对象，对象 映射 到数据库 一条数据
-            chat_thread = ChatThread(user_id = user_id, title = title)
-            # 新增对象，就是插入一条数据
+        # 鉴权依赖可能已经在同一个 Session 上开启了事务，
+        # 这里不能再次 session.begin()，直接 commit/rollback 共享事务。
+        try:
+            chat_thread = ChatThread(user_id=user_id, title=title)
             await self.repository.add(chat_thread)
-
+            await self.session.commit()
+            await self.session.refresh(chat_thread)
             return chat_thread
+        except Exception:
+            await self.session.rollback()
+            raise
 
     async def list_by_user(self, user_id: int) -> list[ChatThread]:
         return await self.repository.list_by_user(user_id)
@@ -38,37 +41,37 @@ class ChatThreadService:
             user_id: int,
             title: str
     ) -> ChatThread:
-        async with self.session.begin():
-            # 1.根据thread_id和user_id查询，判断是否匹配
-            thread = await self.repository.find_owned(thread_id, user_id)
-            if thread is None:
-                # 为None，说明不存在，或者不属于当前用户，抛出异常
-                # raise: 就是指扔出去一个异常，代码会立刻终止，结束运行，把异常扔给调用者
-                raise ChatThreadNotFoundError
+        thread = await self.repository.find_owned(thread_id, user_id)
+        if thread is None:
+            raise ChatThreadNotFoundError
 
-            # 2.查询后直接修改字段，触发数据库更新
+        try:
             thread.title = title
-
-            # 3.刷新数据，重新从数据库中查出最新值
-            # 异步事务中要先调用 flush() 执行 SQL，再调用 refresh(thread) 重新加载时间字段
-            await self.session.flush()
+            await self.session.commit()
             await self.session.refresh(thread)
-
-        return thread
+            return thread
+        except Exception:
+            await self.session.rollback()
+            raise
 
     async def delete(
             self,
             thread_id: UUID,
             user_id: int,
     ) -> None:
-        async with self.session.begin():
-            thread = await self.repository.find_owned(thread_id, user_id)
-            if thread is None:
-                raise ChatThreadNotFoundError
+        thread = await self.repository.find_owned(thread_id, user_id)
+        if thread is None:
+            raise ChatThreadNotFoundError
+
+        try:
             # 删除checkpointer中的会话状态
             await self.agent.checkpointer.adelete_thread(str(thread_id))
             # 删除会话元数据
             await self.repository.delete(thread)
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
     async def get_history(
             self,

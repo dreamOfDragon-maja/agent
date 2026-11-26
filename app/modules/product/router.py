@@ -22,13 +22,13 @@ async def list_products(
 @router.get("/candidates", response_model=list[ProductResponse])
 async def list_candidates(
     categories: list[str] = Query(min_length=1),
-    premium_min: Decimal | None = None,
+    max_price: Decimal | None = None,
     limit_per_category: int = 5,
     service: ProductService = Depends(get_product_service),
 ) -> list[ProductResponse]:
     return await service.list_candidates(
         categories=categories,
-        premium_min=premium_min,
+        max_price=max_price,
         limit_per_category=limit_per_category,
     )
 

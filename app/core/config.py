@@ -26,9 +26,9 @@ class DatabaseSettings(EnvSettings):
 
     host: str = Field(alias="DB_HOST", default="localhost")
     port: int = Field(alias="DB_PORT", default=5432)
-    name: str = Field(alias="DB_NAME", default="insurance")
-    user: str = Field(alias="DB_USER", default="insurance")
-    password: str = Field(alias="DB_PASSWORD", default="insurance123")
+    name: str = Field(alias="DB_NAME", default="shopmate")
+    user: str = Field(alias="DB_USER", default="shopmate")
+    password: str = Field(alias="DB_PASSWORD", default="shopmate123")
     echo: bool = Field(alias="DB_ECHO", default=False)
     pool_size: int = Field(alias="DB_POOL_SIZE", default=5)
     max_overflow: int = Field(alias="DB_MAX_OVERFLOW", default=10)
@@ -66,14 +66,24 @@ class LoggingSettings(EnvSettings):
 
 class RAGSettings(EnvSettings):
     """RAG相关配置"""
-    mineru_token: str = Field(alias="MINERU_TOKEN")
+    mineru_token: str = Field(alias="MINERU_TOKEN", default="")
     milvus_host: str = Field(alias="MILVUS_HOST", default="127.0.0.1")
     milvus_port: int = Field(alias="MILVUS_PORT", default=19530)
+    collection_name: str = Field(alias="RAG_COLLECTION", default="product_knowledge")
+    rerank_enabled: bool = Field(alias="RAG_RERANK_ENABLED", default=True)
 
     @computed_field
     @property
     def milvus_url(self) -> str:
         return f"http://{self.milvus_host}:{self.milvus_port}"
+
+
+class AuthSettings(EnvSettings):
+    """登录与令牌相关设置"""
+
+    jwt_secret: str = Field(alias="JWT_SECRET", default="dev-only-change-me")
+    jwt_algorithm: str = Field(alias="JWT_ALGORITHM", default="HS256")
+    jwt_expire_minutes: int = Field(alias="JWT_EXPIRE_MINUTES", default=720)
 
 class Settings(BaseSettings):
     app: AppSettings = Field(default_factory=AppSettings)
@@ -81,6 +91,7 @@ class Settings(BaseSettings):
     llm: LLMSettings = Field(default_factory=LLMSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     rag: RAGSettings = Field(default_factory=RAGSettings)
+    auth: AuthSettings = Field(default_factory=AuthSettings)
 
 # 项目启动直接初始化
 settings = Settings()

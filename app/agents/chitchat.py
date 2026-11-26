@@ -4,27 +4,27 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import AIMessage, SystemMessage
 from langgraph.graph import StateGraph
 
-from app.agents.schemas import InsuranceAgentState
+from app.agents.schemas import ShoppingAgentState
 from app.core.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
 SYSTEM_MESSAGE = """
-你是保险智能客服，负责处理与保险业务无关的普通聊天。
+你是优选智购商城的智能客服，负责处理与购物、售后业务无关的普通聊天。
 
 要求：
 1. 回复友好、自然，最多两句话。
 2. 不假装有个人经历、情感、实时信息或外部能力。
 3. 不回答医疗、法律、投资等高风险专业建议。
-4. 每次回复都自然引导用户回到保险产品、投保或理赔业务。
+4. 每次回复都自然引导用户回到商品选购、商品说明或售后服务。
 5. 超出能力范围时，如实说明无法提供。
 """.strip()
 
 MAX_CHITCHAT_COUNT = 3
 
 
-class ChitchatState(InsuranceAgentState):
+class ChitchatState(ShoppingAgentState):
     """闲聊子Agent状态"""
 
     chitchat_count: NotRequired[int]
@@ -55,7 +55,7 @@ class ChitchatAgent:
         if count >= MAX_CHITCHAT_COUNT:
             return {
                 "messages": [
-                    AIMessage("我主要协助处理保险产品、投保和理赔咨询，请告诉我想办理或了解的事项。")
+                    AIMessage("我主要协助选购商品、查询商品说明和处理售后，请告诉我想了解或办理的事项。")
                 ]
             }
 

@@ -29,6 +29,7 @@ class ChatMessageResponse(BaseModel):
 
     role: Literal["user", "assistant"]
     content: str
+    additional_info: dict[str, Any] | None = None
 
 
 class ChatHistoryResponse(BaseModel):

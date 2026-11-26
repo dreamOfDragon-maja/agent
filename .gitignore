@@ -1,0 +1,21 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Local secrets
+.env
+.env.local
+
+# Local runtime artifacts
+.ruff_cache/
+.idea/
+
+# Legacy insurance development notebooks (not part of ShopMate)
+.legacy/

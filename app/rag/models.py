@@ -17,7 +17,7 @@ class ParentChunk(Base, CreateAtMixin):
         primary_key=True,
     )
     product_id: Mapped[int] = mapped_column(BigInteger)
-    clause_name: Mapped[str] = mapped_column(String(300))
+    document_name: Mapped[str] = mapped_column(String(300))
     section_path: Mapped[list[str]] = mapped_column(
         ARRAY(Text),
         default=list,

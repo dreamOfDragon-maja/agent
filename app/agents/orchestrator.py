@@ -2,13 +2,14 @@ from langchain_core.messages import AIMessage, BaseMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command
+
 from .intent_router import intent_router
 from app.agents.chitchat import init_chitchat_agent
-from app.agents.insurance_advisor import init_insurance_advisor
-from app.agents.claim import init_claim_agent
+from app.agents.shopping_advisor import init_shopping_advisor
+from app.agents.after_sales import init_after_sales_agent
 
 from app.agents.schemas import (
-    InsuranceAgentState,
+    ShoppingAgentState,
     Intent
 )
 
@@ -16,9 +17,9 @@ from app.agents.schemas import (
 
 # 1.路由节点
 async def route_node(
-    state: InsuranceAgentState,
+    state: ShoppingAgentState,
 ) -> Command[Intent]:
-    """意图识别节点，后续再完善"""
+    """意图识别节点"""
     # 1.获取active_workflow，也就是上一轮会话的工作流
     previous_workflow = state.get("active_workflow", "")
     # 2.获取上轮AI消息
@@ -66,48 +67,48 @@ def find_previous_ai_message(messages: list[BaseMessage]) -> str:
 
 
 # 2.闲聊节点
-async def chitchat_node(state: InsuranceAgentState) -> dict:
-    return {"messages": [AIMessage("你好，今天想聊点什么？")]}
+async def chitchat_node(state: ShoppingAgentState) -> dict:
+    return {"messages": [AIMessage("你好，今天想了解点什么？")]}
 
 
-# 3.保险推荐节点
-async def recommendation_node(state: InsuranceAgentState) -> dict:
-    return {"messages": [AIMessage("保险推荐工作流暂未接入。")]}
+# 3.商品推荐节点（占位，实际使用子 Agent）
+async def recommendation_node(state: ShoppingAgentState) -> dict:
+    return {"messages": [AIMessage("商品推荐工作流暂未接入。")]}
 
 
-# 4.理赔节点
-async def claim_node(state: InsuranceAgentState) -> dict:
-    return {"messages": [AIMessage("理赔工作流暂未接入。")]}
+# 4.售后节点（占位，实际使用子 Agent）
+async def after_sales_node(state: ShoppingAgentState) -> dict:
+    return {"messages": [AIMessage("售后工作流暂未接入。")]}
 
 
 # 5.人工节点
-def human_handoff_node(state: InsuranceAgentState) -> dict:
+def human_handoff_node(state: ShoppingAgentState) -> dict:
     return {"messages": [AIMessage("已记录转人工请求，后续可接入人工客服系统。")]}
 
 
 # 6.fallback节点
-def fallback_node(state: InsuranceAgentState) -> dict:
-    return {"messages": [AIMessage("我还不能确定你的需求，请说明是想咨询保险、推荐方案还是办理理赔。")]}
+def fallback_node(state: ShoppingAgentState) -> dict:
+    return {"messages": [AIMessage("我还不能确定你的需求，请说明是想选购商品、咨询商品说明还是办理售后。")]}
 
 
 # 二、定义主Graph
-async def init_insurance_orchestrator(
+async def init_shopping_orchestrator(
         checkpointer: AsyncPostgresSaver,
 ):
-    """初始化保险顾问主Graph"""
+    """初始化商城智能顾问主Graph"""
 
-    builder = StateGraph(InsuranceAgentState)
+    builder = StateGraph(ShoppingAgentState)
     builder.add_node("route", route_node)
     builder.add_node("chitchat", init_chitchat_agent())
-    builder.add_node("recommendation_plan", await init_insurance_advisor())
-    builder.add_node("claim", await init_claim_agent())
+    builder.add_node("recommendation", await init_shopping_advisor())
+    builder.add_node("after_sales", await init_after_sales_agent())
     builder.add_node("human_handoff", human_handoff_node)
     builder.add_node("fallback", fallback_node)
 
     builder.add_edge(START, "route")
     builder.add_edge("chitchat", END)
-    builder.add_edge("recommendation_plan", END)
-    builder.add_edge("claim", END)
+    builder.add_edge("recommendation", END)
+    builder.add_edge("after_sales", END)
     builder.add_edge("human_handoff", END)
     builder.add_edge("fallback", END)
 

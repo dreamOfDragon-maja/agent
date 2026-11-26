@@ -19,8 +19,8 @@ def merge_additional_info(
 # 路由意图常量
 Intent = Literal[
     "chitchat",
-    "recommendation_plan",
-    "claim",
+    "recommendation",
+    "after_sales",
     "human_handoff",
     "fallback",
 ]
@@ -33,8 +33,8 @@ class RouteResult(BaseModel):
     reason: str = Field(description="判断该意图的理由")
 
 
-class InsuranceAgentState(MessagesState):
-    """保险顾问主Graph状态"""
+class ShoppingAgentState(MessagesState):
+    """购物顾问主Graph状态"""
 
     previous_workflow: Intent
     active_workflow: Intent
